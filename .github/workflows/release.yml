@@ -39,6 +39,12 @@ jobs:
       - name: Generate swagger docs
         run: swag init -g cmd/server/main.go -o docs
 
+      - name: Build frontend
+        run: |
+          cd web
+          pnpm install --frozen-lockfile
+          pnpm run build
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 

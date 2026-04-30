@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: iperf-rpc
-          image: ghcr.io/wold9168/iperf-rpc:v0.1.0
+          image: ${IR_IMAGE}:${IR_IMAGE_TAG}
           ports:
             - containerPort: 8080
               name: api
@@ -64,11 +64,11 @@ spec:
     - name: api
       port: 8080
       targetPort: 8080
-      nodePort: 30080
+      nodePort: ${IR_NODEPORT_SERVER_API}
     - name: iperf
       port: 5201
       targetPort: 5201
-      nodePort: 30081
+      nodePort: ${IR_NODEPORT_SERVER_IPERF}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -91,7 +91,7 @@ spec:
     spec:
       containers:
         - name: iperf-rpc
-          image: ghcr.io/wold9168/iperf-rpc:v0.1.0
+          image: ${IR_IMAGE}:${IR_IMAGE_TAG}
           ports:
             - containerPort: 8080
               name: api
@@ -134,4 +134,4 @@ spec:
     - name: api
       port: 8080
       targetPort: 8080
-      nodePort: 30082
+      nodePort: ${IR_NODEPORT_CLIENT_API}

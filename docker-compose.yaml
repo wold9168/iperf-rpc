@@ -1,6 +1,7 @@
 services:
   server-a:
     build: .
+    image: ${IR_IMAGE:-ghcr.io/wold9168/iperf-rpc}:${IR_IMAGE_TAG:-latest}
     container_name: iperf-rpc-server-a
     ports:
       - "8080:8080"
@@ -10,6 +11,7 @@ services:
 
   server-b:
     build: .
+    image: ${IR_IMAGE:-ghcr.io/wold9168/iperf-rpc}:${IR_IMAGE_TAG:-latest}
     container_name: iperf-rpc-server-b
     ports:
       - "8081:8080"

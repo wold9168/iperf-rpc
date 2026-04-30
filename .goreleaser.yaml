@@ -1,0 +1,72 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: iperf-rpc
+    main: ./cmd/server
+    binary: iperf-rpc
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+      - riscv64
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .Commit }}
+      - -X main.date={{ .Date }}
+
+archives:
+  - formats: [binary]
+
+dockers:
+  - id: amd64
+    image_templates:
+      - "ghcr.io/wold9168/iperf-rpc:{{ .Version }}-amd64"
+      - "ghcr.io/wold9168/iperf-rpc:latest-amd64"
+    goarch: amd64
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--platform=linux/amd64"
+  - id: arm64
+    image_templates:
+      - "ghcr.io/wold9168/iperf-rpc:{{ .Version }}-arm64"
+      - "ghcr.io/wold9168/iperf-rpc:latest-arm64"
+    goarch: arm64
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--platform=linux/arm64"
+
+docker_manifests:
+  - name_template: "ghcr.io/wold9168/iperf-rpc:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/wold9168/iperf-rpc:{{ .Version }}-amd64"
+      - "ghcr.io/wold9168/iperf-rpc:{{ .Version }}-arm64"
+  - name_template: "ghcr.io/wold9168/iperf-rpc:latest"
+    image_templates:
+      - "ghcr.io/wold9168/iperf-rpc:latest-amd64"
+      - "ghcr.io/wold9168/iperf-rpc:latest-arm64"
+
+release:
+  disable: true
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  version_template: "{{ .Tag }}-dev"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"

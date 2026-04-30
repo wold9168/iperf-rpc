@@ -1,0 +1,3 @@
+#!/bin/bash
+set -e
+swag init -g cmd/server/main.go -o docs

@@ -1,0 +1,18 @@
+services:
+  server-a:
+    build: .
+    container_name: iperf-rpc-server-a
+    ports:
+      - "8080:8080"
+      - "5201:5201"
+    environment:
+      - PORT=8080
+
+  server-b:
+    build: .
+    container_name: iperf-rpc-server-b
+    ports:
+      - "8081:8080"
+      - "5202:5201"
+    environment:
+      - PORT=8080

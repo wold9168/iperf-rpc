@@ -1,0 +1,278 @@
+basePath: /api/v1
+definitions:
+  model.HealthResponse:
+    description: 健康检查响应
+    properties:
+      status:
+        example: ok
+        type: string
+    type: object
+  model.IperfArgs:
+    description: iperf3 运行参数
+    properties:
+      bandwidth:
+        description: 带宽限制
+        example: 100M
+        type: string
+      duration:
+        default: 10
+        description: 测试时长秒数
+        example: 10
+        type: integer
+      extra:
+        description: 额外命令行参数
+        type: string
+      parallel:
+        default: 1
+        description: 并行流数
+        example: 1
+        type: integer
+      port:
+        default: 5201
+        description: 端口
+        example: 5201
+        type: integer
+      protocol:
+        description: tcp 或 udp
+        enum:
+        - tcp
+        - udp
+        example: tcp
+        type: string
+      reverse:
+        description: 反向测试
+        example: false
+        type: boolean
+      target:
+        description: '客户端模式必填: 目标服务器 IP'
+        example: 10.0.0.2
+        type: string
+    type: object
+  model.IperfRunData:
+    description: iperf3 执行结果数据
+    properties:
+      command:
+        example: iperf3 -c 10.0.0.2 -p 5201 -t 10 -J
+        type: string
+      finished_at:
+        type: string
+      id:
+        example: uuid
+        type: string
+      output:
+        type: string
+      started_at:
+        type: string
+      status:
+        enum:
+        - running
+        - completed
+        - error
+        example: completed
+        type: string
+      summary:
+        $ref: '#/definitions/model.IperfSummary'
+    type: object
+  model.IperfRunRequest:
+    description: iperf3 执行请求
+    properties:
+      args:
+        $ref: '#/definitions/model.IperfArgs'
+      mode:
+        description: client 或 server
+        enum:
+        - client
+        - server
+        example: client
+        type: string
+    required:
+    - args
+    - mode
+    type: object
+  model.IperfRunResponse:
+    description: iperf3 执行结果
+    properties:
+      code:
+        example: 0
+        type: integer
+      data:
+        $ref: '#/definitions/model.IperfRunData'
+      message:
+        example: success
+        type: string
+    type: object
+  model.IperfSummary:
+    description: iperf3 结果摘要
+    properties:
+      bitrate_bps:
+        example: 945000000
+        type: number
+      duration_sec:
+        example: 10
+        type: number
+      jitter_ms:
+        example: 0.5
+        type: number
+      lost_percent:
+        example: 0
+        type: number
+    type: object
+  model.ServerStartData:
+    description: iperf3 server 启动数据
+    properties:
+      pid:
+        example: 12345
+        type: integer
+      port:
+        example: 5201
+        type: integer
+    type: object
+  model.ServerStartResponse:
+    description: iperf3 server 启动响应
+    properties:
+      code:
+        example: 0
+        type: integer
+      data:
+        $ref: '#/definitions/model.ServerStartData'
+      message:
+        example: server started
+        type: string
+    type: object
+  model.ServerStatusData:
+    description: iperf3 server 状态数据
+    properties:
+      pid:
+        example: 12345
+        type: integer
+      port:
+        example: 5201
+        type: integer
+      running:
+        example: true
+        type: boolean
+    type: object
+  model.ServerStatusResponse:
+    description: iperf3 server 状态响应
+    properties:
+      code:
+        example: 0
+        type: integer
+      data:
+        $ref: '#/definitions/model.ServerStatusData'
+      message:
+        example: server running
+        type: string
+    type: object
+  model.SimpleResponse:
+    description: 通用响应
+    properties:
+      code:
+        example: 0
+        type: integer
+      message:
+        example: ok
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: 基于 iperf3 的网络测速 RPC 服务
+  title: iperf-rpc API
+  version: "1.0"
+paths:
+  /api/v1/health:
+    get:
+      description: 返回服务健康状态
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.HealthResponse'
+      summary: 健康检查
+      tags:
+      - health
+  /api/v1/iperf/run:
+    post:
+      consumes:
+      - application/json
+      description: 根据请求参数执行 iperf3 客户端或服务端测速
+      parameters:
+      - description: iperf3 执行请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.IperfRunRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.IperfRunResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.SimpleResponse'
+      summary: 执行一次 iperf3 测速
+      tags:
+      - iperf
+  /api/v1/iperf/server/start:
+    post:
+      consumes:
+      - application/json
+      description: 在当前后端启动 iperf3 服务端 (后台运行)
+      parameters:
+      - default: 5201
+        description: 监听端口
+        in: query
+        name: port
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.ServerStartResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.SimpleResponse'
+      summary: 启动 iperf3 服务端
+      tags:
+      - iperf
+  /api/v1/iperf/server/stop:
+    post:
+      description: 停止当前后端运行的 iperf3 服务端
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.SimpleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.SimpleResponse'
+      summary: 停止 iperf3 服务端
+      tags:
+      - iperf
+  /api/v1/iperf/status:
+    get:
+      description: 获取当前后端 iperf3 服务端运行状态
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.ServerStatusResponse'
+      summary: 获取 iperf3 服务端状态
+      tags:
+      - iperf
+swagger: "2.0"

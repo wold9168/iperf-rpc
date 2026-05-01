@@ -49,7 +49,6 @@ func (e *HttpExecutor) Run(req *model.HttpTestRequest) *model.HttpTestData {
 
 	client := &http.Client{
 		Transport: transport,
-		Timeout:   time.Duration(req.Duration+10) * time.Second,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(req.Duration+10)*time.Second)
@@ -147,56 +146,57 @@ func (e *HttpExecutor) doDownload(ctx context.Context, client *http.Client, url 
 }
 
 func (e *HttpExecutor) doUpload(ctx context.Context, client *http.Client, url string, duration int) (int64, time.Duration, error) {
-	body := &timedReadCloser{
-		ctx:      ctx,
-		deadline: time.Now().Add(time.Duration(duration) * time.Second),
-	}
+	done := make(chan struct{})
+	reader := &uploadReader{done: done}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", url, body)
+	go func() {
+		select {
+		case <-time.After(time.Duration(duration) * time.Second):
+			close(done)
+		case <-ctx.Done():
+			close(done)
+		}
+	}()
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, reader)
 	if err != nil {
 		return 0, 0, err
 	}
 	req.Header.Set("Content-Type", "application/octet-stream")
+	req.ContentLength = -1
 
 	start := time.Now()
 	resp, err := client.Do(req)
 	elapsed := time.Since(start)
 	if err != nil {
-		return body.total, elapsed, fmt.Errorf("upload request failed: %w", err)
+		return reader.total, elapsed, fmt.Errorf("upload request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return body.total, elapsed, fmt.Errorf("unexpected status: %d", resp.StatusCode)
+		return reader.total, elapsed, fmt.Errorf("unexpected status: %d", resp.StatusCode)
 	}
 
 	io.Copy(io.Discard, resp.Body)
-	return body.total, elapsed, nil
+	return reader.total, elapsed, nil
 }
 
-type timedReadCloser struct {
-	ctx      context.Context
-	deadline time.Time
-	total    int64
+type uploadReader struct {
+	done  chan struct{}
+	total int64
 }
 
-func (r *timedReadCloser) Read(p []byte) (int, error) {
-	if time.Now().After(r.deadline) {
-		return 0, io.EOF
-	}
+func (r *uploadReader) Read(p []byte) (int, error) {
 	select {
-	case <-r.ctx.Done():
+	case <-r.done:
 		return 0, io.EOF
 	default:
-	}
-	for i := range p {
-		p[i] = 0
 	}
 	r.total += int64(len(p))
 	return len(p), nil
 }
 
-func (r *timedReadCloser) Close() error { return nil }
+func (r *uploadReader) Close() error { return nil }
 
 func (e *HttpExecutor) GetResult(id string) *model.HttpTestData {
 	return e.results[id]

@@ -147,26 +147,12 @@ func (e *HttpExecutor) doDownload(ctx context.Context, client *http.Client, url 
 }
 
 func (e *HttpExecutor) doUpload(ctx context.Context, client *http.Client, url string, duration int) (int64, time.Duration, error) {
-	deadline := time.After(time.Duration(duration) * time.Second)
-	buf := make([]byte, 32*1024)
+	body := &timedReadCloser{
+		ctx:      ctx,
+		deadline: time.Now().Add(time.Duration(duration) * time.Second),
+	}
 
-	reader, writer := io.Pipe()
-
-	go func() {
-		defer writer.Close()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-			}
-			if _, err := writer.Write(buf); err != nil {
-				return
-			}
-		}
-	}()
-
-	req, err := http.NewRequestWithContext(ctx, "POST", url, reader)
+	req, err := http.NewRequestWithContext(ctx, "POST", url, body)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -176,19 +162,41 @@ func (e *HttpExecutor) doUpload(ctx context.Context, client *http.Client, url st
 	resp, err := client.Do(req)
 	elapsed := time.Since(start)
 	if err != nil {
-		return 0, elapsed, fmt.Errorf("upload request failed: %w", err)
+		return body.total, elapsed, fmt.Errorf("upload request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return 0, elapsed, fmt.Errorf("unexpected status: %d", resp.StatusCode)
+		return body.total, elapsed, fmt.Errorf("unexpected status: %d", resp.StatusCode)
 	}
 
 	io.Copy(io.Discard, resp.Body)
-
-	_ = deadline
-	return 0, elapsed, nil
+	return body.total, elapsed, nil
 }
+
+type timedReadCloser struct {
+	ctx      context.Context
+	deadline time.Time
+	total    int64
+}
+
+func (r *timedReadCloser) Read(p []byte) (int, error) {
+	if time.Now().After(r.deadline) {
+		return 0, io.EOF
+	}
+	select {
+	case <-r.ctx.Done():
+		return 0, io.EOF
+	default:
+	}
+	for i := range p {
+		p[i] = 0
+	}
+	r.total += int64(len(p))
+	return len(p), nil
+}
+
+func (r *timedReadCloser) Close() error { return nil }
 
 func (e *HttpExecutor) GetResult(id string) *model.HttpTestData {
 	return e.results[id]

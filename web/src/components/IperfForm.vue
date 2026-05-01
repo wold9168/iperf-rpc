@@ -254,8 +254,8 @@ export default {
   gap: 6px;
 }
 
-.proto-select {
-  width: 90px;
+.form-group .proto-select {
+  width: 72px;
   flex-shrink: 0;
   padding: 8px 8px;
   border: 1px solid #d1d5db;
@@ -264,7 +264,7 @@ export default {
   outline: none;
 }
 
-.proto-select:focus {
+.form-group .proto-select:focus {
   border-color: #4361ee;
 }
 

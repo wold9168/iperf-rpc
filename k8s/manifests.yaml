@@ -17,6 +17,7 @@ spec:
       containers:
         - name: iperf-rpc
           image: ${IR_IMAGE}:${IR_IMAGE_TAG}
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
               name: api

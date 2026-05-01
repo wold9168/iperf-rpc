@@ -152,3 +152,29 @@ func TestParseSummary(t *testing.T) {
 		t.Errorf("expected jitter 0.5, got %f", summary.JitterMs)
 	}
 }
+
+func TestBuildArgsServerNoClientArgs(t *testing.T) {
+	e := New()
+	req := &model.IperfRunRequest{
+		Mode: "server",
+		Args: model.IperfArgs{
+			Port:      5201,
+			Duration:  10,
+			Parallel:  4,
+			Bandwidth: "100M",
+			Protocol:  "udp",
+			Reverse:   true,
+		},
+	}
+
+	args := e.buildArgs(req)
+
+	forbidden := []string{"-t", "-P", "-b", "-u", "-R"}
+	for _, flag := range forbidden {
+		for _, a := range args {
+			if a == flag {
+				t.Errorf("server mode should not include %s, got args %v", flag, args)
+			}
+		}
+	}
+}

@@ -20,7 +20,7 @@
         <label>端口</label>
         <input v-model.number="form.args.port" type="number" placeholder="5201" />
       </div>
-      <div class="form-group">
+      <div v-if="form.mode === 'client'" class="form-group">
         <label>协议</label>
         <select v-model="form.args.protocol">
           <option value="tcp">TCP</option>
@@ -29,33 +29,35 @@
       </div>
     </div>
 
-    <div class="form-row">
-      <div class="form-group">
-        <label>时长 (秒)</label>
-        <input v-model.number="form.args.duration" type="number" placeholder="10" />
+    <template v-if="form.mode === 'client'">
+      <div class="form-row">
+        <div class="form-group">
+          <label>时长 (秒)</label>
+          <input v-model.number="form.args.duration" type="number" placeholder="10" />
+        </div>
+        <div class="form-group">
+          <label>并行流数</label>
+          <input v-model.number="form.args.parallel" type="number" placeholder="1" />
+        </div>
       </div>
+
       <div class="form-group">
-        <label>并行流数</label>
-        <input v-model.number="form.args.parallel" type="number" placeholder="1" />
+        <label>带宽限制</label>
+        <input v-model="form.args.bandwidth" placeholder="例如: 100M, 1G (留空不限制)" />
       </div>
-    </div>
 
-    <div class="form-group">
-      <label>带宽限制</label>
-      <input v-model="form.args.bandwidth" placeholder="例如: 100M, 1G (留空不限制)" />
-    </div>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" v-model="form.args.reverse" />
+          反向测试 (服务端发送)
+        </label>
+      </div>
 
-    <div class="form-group">
-      <label>
-        <input type="checkbox" v-model="form.args.reverse" />
-        反向测试 (服务端发送)
-      </label>
-    </div>
-
-    <div class="form-group">
-      <label>额外参数</label>
-      <input v-model="form.args.extra" placeholder="例如: --omit 2 --window 256K" />
-    </div>
+      <div class="form-group">
+        <label>额外参数</label>
+        <input v-model="form.args.extra" placeholder="例如: --omit 2 --window 256K" />
+      </div>
+    </template>
 
     <button class="btn btn-primary btn-block" @click="submit" :disabled="loading">
       {{ loading ? '执行中...' : '执行测速' }}

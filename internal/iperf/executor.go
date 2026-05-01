@@ -72,23 +72,26 @@ func (e *Executor) buildArgs(req *model.IperfRunRequest) []string {
 	if req.Args.Port > 0 {
 		args = append(args, "-p", strconv.Itoa(req.Args.Port))
 	}
-	if req.Args.Duration > 0 {
-		args = append(args, "-t", strconv.Itoa(req.Args.Duration))
-	}
-	if req.Args.Parallel > 0 {
-		args = append(args, "-P", strconv.Itoa(req.Args.Parallel))
-	}
-	if req.Args.Bandwidth != "" {
-		args = append(args, "-b", req.Args.Bandwidth)
-	}
-	if req.Args.Protocol == "udp" {
-		args = append(args, "-u")
-	}
-	if req.Args.Reverse {
-		args = append(args, "-R")
-	}
-	if req.Args.Extra != "" {
-		args = append(args, strings.Fields(req.Args.Extra)...)
+
+	if req.Mode == "client" {
+		if req.Args.Duration > 0 && req.Args.Duration != 10 {
+			args = append(args, "-t", strconv.Itoa(req.Args.Duration))
+		}
+		if req.Args.Parallel > 1 {
+			args = append(args, "-P", strconv.Itoa(req.Args.Parallel))
+		}
+		if req.Args.Bandwidth != "" {
+			args = append(args, "-b", req.Args.Bandwidth)
+		}
+		if req.Args.Protocol == "udp" {
+			args = append(args, "-u")
+		}
+		if req.Args.Reverse {
+			args = append(args, "-R")
+		}
+		if req.Args.Extra != "" {
+			args = append(args, strings.Fields(req.Args.Extra)...)
+		}
 	}
 
 	args = append(args, "-J")

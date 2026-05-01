@@ -59,7 +59,7 @@
       </div>
     </template>
 
-    <button class="btn btn-primary btn-block" @click="submit" :disabled="loading">
+    <button v-if="form.mode === 'client'" class="btn btn-primary btn-block" @click="submit" :disabled="loading">
       {{ loading ? '执行中...' : '执行测速' }}
     </button>
 

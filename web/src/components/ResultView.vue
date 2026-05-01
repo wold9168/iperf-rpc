@@ -16,28 +16,54 @@
         <code class="command">{{ result.command }}</code>
       </div>
 
-      <div v-if="result.summary" class="summary-grid">
-        <div class="summary-item">
-          <span class="summary-value">{{ formatBitrate(result.summary.bitrate_bps) }}</span>
-          <span class="summary-label">吞吐量</span>
+      <template v-if="parsed && parsed.end">
+        <div class="summary-grid">
+          <div class="summary-item">
+            <span class="summary-value">{{ formatBitrate(sender.bitrate) }}</span>
+            <span class="summary-label">{{ sender.label }}吞吐量</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-value">{{ formatBytes(sender.bytes) }}</span>
+            <span class="summary-label">传输总量</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-value">{{ sender.retransmits ?? 0 }}</span>
+            <span class="summary-label">重传次数</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-value">{{ parsed.end.sum?.jitter_ms?.toFixed(2) ?? '-' }} ms</span>
+            <span class="summary-label">抖动</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-value">{{ parsed.end.sum?.lost_percent ?? 0 }}%</span>
+            <span class="summary-label">丢包率</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-value">{{ sender.duration?.toFixed(1) ?? '-' }}s</span>
+            <span class="summary-label">耗时</span>
+          </div>
+          <div class="summary-item" v-if="parsed.end.cpu_utilization_percent">
+            <span class="summary-value">{{ cpuLocal }}% / {{ cpuRemote }}%</span>
+            <span class="summary-label">CPU (本机/远端)</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-value">{{ mtu }}</span>
+            <span class="summary-label">MTU</span>
+          </div>
         </div>
-        <div class="summary-item">
-          <span class="summary-value">{{ result.summary.jitter_ms?.toFixed(2) ?? '-' }} ms</span>
-          <span class="summary-label">抖动</span>
+
+        <div v-if="chartData" class="chart-container">
+          <Line :data="chartData" :options="chartOptions" />
         </div>
-        <div class="summary-item">
-          <span class="summary-value">{{ result.summary.lost_percent ?? '-' }}%</span>
-          <span class="summary-label">丢包率</span>
-        </div>
-        <div class="summary-item">
-          <span class="summary-value">{{ result.summary.duration_sec?.toFixed(1) ?? '-' }}s</span>
-          <span class="summary-label">耗时</span>
-        </div>
+      </template>
+
+      <div v-else-if="result.status === 'error'" class="error-block">
+        <pre>{{ result.output }}</pre>
       </div>
 
       <details class="raw-output">
-        <summary>原始输出</summary>
-        <pre>{{ result.output || '(无输出)' }}</pre>
+        <summary>JSON 原始输出</summary>
+        <pre>{{ formattedOutput }}</pre>
       </details>
 
       <div class="timestamps">
@@ -49,10 +75,111 @@
 </template>
 
 <script>
+import { Line } from 'vue-chartjs'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Filler,
+} from 'chart.js'
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Filler)
+
 export default {
   name: 'ResultView',
+  components: { Line },
   props: {
     result: { type: Object, default: null },
+  },
+  computed: {
+    parsed() {
+      if (!this.result?.output) return null
+      try {
+        return JSON.parse(this.result.output)
+      } catch {
+        return null
+      }
+    },
+    sender() {
+      if (!this.parsed?.end) return {}
+      const sent = this.parsed.end.sum_sent
+      const recv = this.parsed.end.sum_received
+      if (sent) return { ...sent, label: '发送', bitrate: sent.bits_per_second, duration: sent.seconds }
+      if (recv) return { ...recv, label: '接收', bitrate: recv.bits_per_second, duration: recv.seconds }
+      return {}
+    },
+    cpuLocal() {
+      return this.parsed?.end?.cpu_utilization_percent?.host_total?.toFixed(1) ?? '-'
+    },
+    cpuRemote() {
+      return this.parsed?.end?.cpu_utilization_percent?.remote_total?.toFixed(1) ?? '-'
+    },
+    mtu() {
+      const conn = this.parsed?.start?.connected?.[0]
+      return conn?.mtu ?? '-'
+    },
+    formattedOutput() {
+      if (!this.result?.output) return ''
+      try {
+        return JSON.stringify(JSON.parse(this.result.output), null, 2)
+      } catch {
+        return this.result.output
+      }
+    },
+    chartData() {
+      const intervals = this.parsed?.intervals
+      if (!intervals?.length) return null
+
+      const labels = intervals.map((_, i) => `${i + 1}s`)
+      const bitrates = intervals.map((iv) => {
+        const s = iv.sum
+        return s ? (s.bits_per_second / 1e6) : 0
+      })
+
+      return {
+        labels,
+        datasets: [
+          {
+            label: '吞吐量 (Mbps)',
+            data: bitrates,
+            borderColor: '#4361ee',
+            backgroundColor: 'rgba(67,97,238,0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+          },
+        ],
+      }
+    },
+    chartOptions() {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.parsed.y.toFixed(1)} Mbps`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            title: { display: true, text: '时间' },
+            grid: { display: false },
+          },
+          y: {
+            title: { display: true, text: 'Mbps' },
+            beginAtZero: true,
+          },
+        },
+      }
+    },
   },
   methods: {
     statusText(s) {
@@ -64,6 +191,13 @@ export default {
       if (bps >= 1e6) return (bps / 1e6).toFixed(2) + ' Mbps'
       if (bps >= 1e3) return (bps / 1e3).toFixed(2) + ' Kbps'
       return bps.toFixed(0) + ' bps'
+    },
+    formatBytes(bytes) {
+      if (!bytes || bytes === 0) return '-'
+      if (bytes >= 1e9) return (bytes / 1e9).toFixed(2) + ' GB'
+      if (bytes >= 1e6) return (bytes / 1e6).toFixed(2) + ' MB'
+      if (bytes >= 1e3) return (bytes / 1e3).toFixed(2) + ' KB'
+      return bytes + ' B'
     },
     formatTime(t) {
       if (!t) return '-'
@@ -138,7 +272,7 @@ export default {
 
 .summary-value {
   display: block;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: #1a1a2e;
 }
@@ -150,7 +284,28 @@ export default {
   margin-top: 4px;
 }
 
-.raw-output { margin-top: 12px; }
+.chart-container {
+  height: 260px;
+  margin: 20px 0;
+}
+
+.error-block {
+  background: #fff5f5;
+  border: 1px solid #fecaca;
+  padding: 12px;
+  border-radius: 6px;
+  margin: 12px 0;
+}
+
+.error-block pre {
+  margin: 0;
+  font-size: 13px;
+  color: #991b1b;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.raw-output { margin-top: 16px; }
 
 .raw-output summary {
   cursor: pointer;

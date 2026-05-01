@@ -71,7 +71,13 @@
 
     <div class="form-group">
       <label>目标实例 <span class="required">*</span></label>
-      <input v-model="http.target" placeholder="例如: 10.0.0.2:8080" />
+      <div class="target-row">
+        <select class="proto-select" v-model="http.tls">
+          <option :value="false">HTTP</option>
+          <option :value="true">HTTPS</option>
+        </select>
+        <input class="target-input" v-model="http.target" placeholder="10.0.0.2:8080" />
+      </div>
       <span class="hint">{{ httpUrl }}</span>
     </div>
 
@@ -96,6 +102,13 @@
         <label>时长 (秒)</label>
         <input v-model.number="http.duration" type="number" placeholder="10" />
       </div>
+    </div>
+
+    <div class="form-group" v-if="http.tls">
+      <label>
+        <input type="checkbox" v-model="http.insecure" />
+        跳过 TLS 证书验证 (不安全)
+      </label>
     </div>
 
     <button class="btn btn-primary btn-block" @click="submitHttp" :disabled="httpLoading">
@@ -136,6 +149,8 @@ export default {
         direction: 'download',
         duration: 10,
         dataSize: '100M',
+        tls: false,
+        insecure: false,
       },
       httpLoading: false,
       httpError: '',
@@ -144,7 +159,8 @@ export default {
   computed: {
     httpUrl() {
       if (!this.http.target) return ''
-      const base = `http://${this.http.target}/api/v1/http`
+      const scheme = this.http.tls ? 'https' : 'http'
+      const base = `${scheme}://${this.http.target}/api/v1/http`
       if (this.http.direction === 'download') {
         return `${base}/data?size=${this.http.dataSize || '100M'}`
       }
@@ -193,6 +209,7 @@ export default {
           proxy: this.http.proxy || undefined,
           direction: this.http.direction,
           duration: this.http.duration || 10,
+          insecure: this.http.insecure,
         })
         this.$emit('result', { type: 'http', data: data.data })
       } catch (e) {
@@ -231,6 +248,29 @@ export default {
 }
 
 .required { color: #e63946; }
+
+.target-row {
+  display: flex;
+  gap: 6px;
+}
+
+.proto-select {
+  width: 90px;
+  flex-shrink: 0;
+  padding: 8px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+}
+
+.proto-select:focus {
+  border-color: #4361ee;
+}
+
+.target-input {
+  flex: 1;
+}
 
 .hint {
   display: block;

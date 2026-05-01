@@ -83,3 +83,33 @@ type SimpleResponse struct {
 type HealthResponse struct {
 	Status string `json:"status" example:"ok"`
 }
+
+// @Description HTTP 测速请求
+type HttpTestRequest struct {
+	URL       string `json:"url" binding:"required" example:"http://10.0.0.2:8080/api/v1/http/data?size=100M"` // 目标 URL
+	Proxy     string `json:"proxy" example:"socks5://proxy:1080"`                                              // SOCKS5 代理地址 (可选)
+	Direction string `json:"direction" binding:"required" example:"download" enums:"download,upload"`          // download 或 upload
+	Duration  int    `json:"duration" example:"10" default:"10"`                                               // 测试时长秒数
+}
+
+// @Description HTTP 测速响应
+type HttpTestResponse struct {
+	Code    int           `json:"code" example:"0"`
+	Message string        `json:"message" example:"success"`
+	Data    *HttpTestData `json:"data,omitempty"`
+}
+
+// @Description HTTP 测速结果数据
+type HttpTestData struct {
+	ID          string     `json:"id" example:"uuid"`
+	URL         string     `json:"url"`
+	Proxy       string     `json:"proxy,omitempty"`
+	Direction   string     `json:"direction"`
+	Status      string     `json:"status" example:"completed" enums:"running,completed,error"`
+	BytesTotal  int64      `json:"bytes_total" example:"104857600"`
+	BitrateBps  float64    `json:"bitrate_bps" example:"95000000"`
+	DurationSec float64    `json:"duration_sec" example:"10"`
+	Error       string     `json:"error,omitempty"`
+	StartedAt   time.Time  `json:"started_at"`
+	FinishedAt  *time.Time `json:"finished_at,omitempty"`
+}

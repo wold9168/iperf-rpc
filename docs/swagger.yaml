@@ -7,6 +7,80 @@ definitions:
         example: ok
         type: string
     type: object
+  model.HttpTestData:
+    description: HTTP 测速结果数据
+    properties:
+      bitrate_bps:
+        example: 95000000
+        type: number
+      bytes_total:
+        example: 104857600
+        type: integer
+      direction:
+        type: string
+      duration_sec:
+        example: 10
+        type: number
+      error:
+        type: string
+      finished_at:
+        type: string
+      id:
+        example: uuid
+        type: string
+      proxy:
+        type: string
+      started_at:
+        type: string
+      status:
+        enum:
+        - running
+        - completed
+        - error
+        example: completed
+        type: string
+      url:
+        type: string
+    type: object
+  model.HttpTestRequest:
+    description: HTTP 测速请求
+    properties:
+      direction:
+        description: download 或 upload
+        enum:
+        - download
+        - upload
+        example: download
+        type: string
+      duration:
+        default: 10
+        description: 测试时长秒数
+        example: 10
+        type: integer
+      proxy:
+        description: SOCKS5 代理地址 (可选)
+        example: socks5://proxy:1080
+        type: string
+      url:
+        description: 目标 URL
+        example: http://10.0.0.2:8080/api/v1/http/data?size=100M
+        type: string
+    required:
+    - direction
+    - url
+    type: object
+  model.HttpTestResponse:
+    description: HTTP 测速响应
+    properties:
+      code:
+        example: 0
+        type: integer
+      data:
+        $ref: '#/definitions/model.HttpTestData'
+      message:
+        example: success
+        type: string
+    type: object
   model.IperfArgs:
     description: iperf3 运行参数
     properties:
@@ -194,6 +268,64 @@ paths:
       summary: 健康检查
       tags:
       - health
+  /api/v1/http/data:
+    get:
+      description: 返回随机数据流，供下载测速使用。size 参数支持 K/M/G 后缀
+      parameters:
+      - default: 10M
+        description: 数据大小
+        in: query
+        name: size
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      summary: HTTP 测速数据端点
+      tags:
+      - http
+  /api/v1/http/run:
+    post:
+      consumes:
+      - application/json
+      description: 通过 HTTP(S) 下载/上传测试网络吞吐量，可选通过 SOCKS5 代理
+      parameters:
+      - description: HTTP 测速请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.HttpTestRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.HttpTestResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.SimpleResponse'
+      summary: 执行 HTTP 测速
+      tags:
+      - http
+  /api/v1/http/upload:
+    post:
+      consumes:
+      - application/octet-stream
+      description: 接收上传数据并丢弃，用于上传测速服务端
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.SimpleResponse'
+      summary: HTTP 上传端点
+      tags:
+      - http
   /api/v1/iperf/run:
     post:
       consumes:

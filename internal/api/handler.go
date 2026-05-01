@@ -1,8 +1,11 @@
 package api
 
 import (
+	"io"
+	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/wold9168/iperf-rpc/internal/iperf"
@@ -10,11 +13,12 @@ import (
 )
 
 type Handler struct {
-	executor *iperf.Executor
+	executor     *iperf.Executor
+	httpExecutor *iperf.HttpExecutor
 }
 
-func NewHandler(executor *iperf.Executor) *Handler {
-	return &Handler{executor: executor}
+func NewHandler(executor *iperf.Executor, httpExecutor *iperf.HttpExecutor) *Handler {
+	return &Handler{executor: executor, httpExecutor: httpExecutor}
 }
 
 // RunIperf godoc
@@ -156,4 +160,115 @@ func (h *Handler) ServerStatus(c *gin.Context) {
 // @Router       /api/v1/health [get]
 func (h *Handler) Health(c *gin.Context) {
 	c.JSON(http.StatusOK, model.HealthResponse{Status: "ok"})
+}
+
+// RunHttpTest godoc
+// @Summary      执行 HTTP 测速
+// @Description  通过 HTTP(S) 下载/上传测试网络吞吐量，可选通过 SOCKS5 代理
+// @Tags         http
+// @Accept       json
+// @Produce      json
+// @Param        request body model.HttpTestRequest true "HTTP 测速请求"
+// @Success      200  {object}  model.HttpTestResponse
+// @Failure      400  {object}  model.SimpleResponse
+// @Router       /api/v1/http/run [post]
+func (h *Handler) RunHttpTest(c *gin.Context) {
+	var req model.HttpTestRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, model.SimpleResponse{
+			Code:    -1,
+			Message: "invalid request: " + err.Error(),
+		})
+		return
+	}
+
+	if req.Direction != "download" && req.Direction != "upload" {
+		c.JSON(http.StatusBadRequest, model.SimpleResponse{
+			Code:    -1,
+			Message: "direction must be 'download' or 'upload'",
+		})
+		return
+	}
+
+	if req.Duration == 0 {
+		req.Duration = 10
+	}
+
+	data := h.httpExecutor.Run(&req)
+	c.JSON(http.StatusOK, model.HttpTestResponse{
+		Code:    0,
+		Message: "success",
+		Data:    data,
+	})
+}
+
+// ServeHttpData godoc
+// @Summary      HTTP 测速数据端点
+// @Description  返回随机数据流，供下载测速使用。size 参数支持 K/M/G 后缀
+// @Tags         http
+// @Produce      octet-stream
+// @Param        size query string false "数据大小" default(10M)
+// @Success      200  {file}   binary
+// @Router       /api/v1/http/data [get]
+func (h *Handler) ServeHttpData(c *gin.Context) {
+	sizeStr := c.DefaultQuery("size", "10M")
+	size := parseSize(sizeStr)
+
+	c.Header("Content-Type", "application/octet-stream")
+	c.Header("Content-Length", strconv.FormatInt(size, 10))
+	c.Status(http.StatusOK)
+
+	buf := make([]byte, 32*1024)
+	written := int64(0)
+	for written < size {
+		n := len(buf)
+		if remaining := size - written; remaining < int64(n) {
+			n = int(remaining)
+		}
+		rand.Read(buf[:n])
+		m, err := c.Writer.Write(buf[:n])
+		if err != nil {
+			return
+		}
+		written += int64(m)
+	}
+}
+
+// ReceiveHttpUpload godoc
+// @Summary      HTTP 上传端点
+// @Description  接收上传数据并丢弃，用于上传测速服务端
+// @Tags         http
+// @Accept       octet-stream
+// @Success      200  {object}  model.SimpleResponse
+// @Router       /api/v1/http/upload [post]
+func (h *Handler) ReceiveHttpUpload(c *gin.Context) {
+	_, _ = io.Copy(io.Discard, c.Request.Body)
+	c.JSON(http.StatusOK, model.SimpleResponse{Code: 0, Message: "ok"})
+}
+
+func parseSize(s string) int64 {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 10 * 1024 * 1024
+	}
+
+	multiplier := int64(1)
+	last := s[len(s)-1]
+	switch last {
+	case 'K', 'k':
+		multiplier = 1024
+		s = s[:len(s)-1]
+	case 'M', 'm':
+		multiplier = 1024 * 1024
+		s = s[:len(s)-1]
+	case 'G', 'g':
+		multiplier = 1024 * 1024 * 1024
+		s = s[:len(s)-1]
+	}
+
+	val, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 10 * 1024 * 1024
+	}
+	return val * multiplier
 }

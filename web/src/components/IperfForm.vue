@@ -65,10 +65,49 @@
 
     <div v-if="error" class="error-msg">{{ error }}</div>
   </div>
+
+  <div class="form-card http-card">
+    <h3>HTTP 测速 (支持 SOCKS5 代理)</h3>
+
+    <div class="form-group">
+      <label>目标实例 <span class="required">*</span></label>
+      <input v-model="http.target" placeholder="例如: 10.0.0.2:8080" />
+      <span class="hint">{{ httpUrl }}</span>
+    </div>
+
+    <div class="form-group">
+      <label>SOCKS5 代理 (可选)</label>
+      <input v-model="http.proxy" placeholder="socks5://proxy:1080" />
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>方向</label>
+        <select v-model="http.direction">
+          <option value="download">下载 (download)</option>
+          <option value="upload">上传 (upload)</option>
+        </select>
+      </div>
+      <div class="form-group" v-if="http.direction === 'download'">
+        <label>数据量</label>
+        <input v-model="http.dataSize" placeholder="100M" />
+      </div>
+      <div class="form-group" v-else>
+        <label>时长 (秒)</label>
+        <input v-model.number="http.duration" type="number" placeholder="10" />
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-block" @click="submitHttp" :disabled="httpLoading">
+      {{ httpLoading ? '执行中...' : '执行 HTTP 测速' }}
+    </button>
+
+    <div v-if="httpError" class="error-msg">{{ httpError }}</div>
+  </div>
 </template>
 
 <script>
-import { runIperf } from '../api/index.js'
+import { runIperf, runHttpTest } from '../api/index.js'
 
 export default {
   name: 'IperfForm',
@@ -90,7 +129,27 @@ export default {
       },
       loading: false,
       error: '',
+
+      http: {
+        target: '',
+        proxy: '',
+        direction: 'download',
+        duration: 10,
+        dataSize: '100M',
+      },
+      httpLoading: false,
+      httpError: '',
     }
+  },
+  computed: {
+    httpUrl() {
+      if (!this.http.target) return ''
+      const base = `http://${this.http.target}/api/v1/http`
+      if (this.http.direction === 'download') {
+        return `${base}/data?size=${this.http.dataSize || '100M'}`
+      }
+      return `${base}/upload`
+    },
   },
   methods: {
     async submit() {
@@ -112,11 +171,34 @@ export default {
             parallel: this.form.args.parallel || 1,
           },
         })
-        this.$emit('result', data.data)
+        this.$emit('result', { type: 'iperf', data: data.data })
       } catch (e) {
         this.error = '请求失败: ' + (e.response?.data?.message || e.message)
       } finally {
         this.loading = false
+      }
+    },
+    async submitHttp() {
+      this.httpError = ''
+
+      if (!this.http.target) {
+        this.httpError = '必须填写目标实例地址'
+        return
+      }
+
+      this.httpLoading = true
+      try {
+        const { data } = await runHttpTest({
+          url: this.httpUrl,
+          proxy: this.http.proxy || undefined,
+          direction: this.http.direction,
+          duration: this.http.duration || 10,
+        })
+        this.$emit('result', { type: 'http', data: data.data })
+      } catch (e) {
+        this.httpError = '请求失败: ' + (e.response?.data?.message || e.message)
+      } finally {
+        this.httpLoading = false
       }
     },
   },
@@ -130,6 +212,8 @@ export default {
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
+
+.http-card { margin-top: 16px; }
 
 .form-card h3 {
   font-size: 16px;
@@ -147,6 +231,14 @@ export default {
 }
 
 .required { color: #e63946; }
+
+.hint {
+  display: block;
+  font-size: 11px;
+  color: #aaa;
+  margin-top: 4px;
+  word-break: break-all;
+}
 
 .form-group input[type="text"],
 .form-group input[type="number"],

@@ -29,6 +29,95 @@
                 }
             }
         },
+        "/api/v1/http/data": {
+            "get": {
+                "description": "返回随机数据流，供下载测速使用。size 参数支持 K/M/G 后缀",
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "http"
+                ],
+                "summary": "HTTP 测速数据端点",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "10M",
+                        "description": "数据大小",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/http/run": {
+            "post": {
+                "description": "通过 HTTP(S) 下载/上传测试网络吞吐量，可选通过 SOCKS5 代理",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "http"
+                ],
+                "summary": "执行 HTTP 测速",
+                "parameters": [
+                    {
+                        "description": "HTTP 测速请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.HttpTestRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.HttpTestResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.SimpleResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/http/upload": {
+            "post": {
+                "description": "接收上传数据并丢弃，用于上传测速服务端",
+                "consumes": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "http"
+                ],
+                "summary": "HTTP 上传端点",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.SimpleResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/iperf/run": {
             "post": {
                 "description": "根据请求参数执行 iperf3 客户端或服务端测速",
@@ -162,6 +251,107 @@
                 "status": {
                     "type": "string",
                     "example": "ok"
+                }
+            }
+        },
+        "model.HttpTestData": {
+            "description": "HTTP 测速结果数据",
+            "type": "object",
+            "properties": {
+                "bitrate_bps": {
+                    "type": "number",
+                    "example": 95000000
+                },
+                "bytes_total": {
+                    "type": "integer",
+                    "example": 104857600
+                },
+                "direction": {
+                    "type": "string"
+                },
+                "duration_sec": {
+                    "type": "number",
+                    "example": 10
+                },
+                "error": {
+                    "type": "string"
+                },
+                "finished_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "uuid"
+                },
+                "proxy": {
+                    "type": "string"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "running",
+                        "completed",
+                        "error"
+                    ],
+                    "example": "completed"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.HttpTestRequest": {
+            "description": "HTTP 测速请求",
+            "type": "object",
+            "required": [
+                "direction",
+                "url"
+            ],
+            "properties": {
+                "direction": {
+                    "description": "download 或 upload",
+                    "type": "string",
+                    "enum": [
+                        "download",
+                        "upload"
+                    ],
+                    "example": "download"
+                },
+                "duration": {
+                    "description": "测试时长秒数",
+                    "type": "integer",
+                    "default": 10,
+                    "example": 10
+                },
+                "proxy": {
+                    "description": "SOCKS5 代理地址 (可选)",
+                    "type": "string",
+                    "example": "socks5://proxy:1080"
+                },
+                "url": {
+                    "description": "目标 URL",
+                    "type": "string",
+                    "example": "http://10.0.0.2:8080/api/v1/http/data?size=100M"
+                }
+            }
+        },
+        "model.HttpTestResponse": {
+            "description": "HTTP 测速响应",
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "data": {
+                    "$ref": "#/definitions/model.HttpTestData"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "success"
                 }
             }
         },

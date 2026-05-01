@@ -11,60 +11,92 @@
         {{ statusText(result.status) }}
       </div>
 
-      <div class="detail-row">
-        <span class="key">指令</span>
-        <code class="command">{{ result.command }}</code>
-      </div>
+      <template v-if="isHttp">
+        <div class="detail-row" v-if="result.url">
+          <span class="key">URL</span>
+          <code class="command">{{ result.url }}</code>
+        </div>
+        <div class="detail-row" v-if="result.proxy">
+          <span class="key">代理</span>
+          <code class="command">{{ result.proxy }}</code>
+        </div>
 
-      <template v-if="parsed && parsed.end">
-        <div class="summary-grid">
+        <div class="summary-grid" v-if="result.status === 'completed'">
           <div class="summary-item">
-            <span class="summary-value">{{ formatBitrate(sender.bitrate) }}</span>
-            <span class="summary-label">{{ sender.label }}吞吐量</span>
+            <span class="summary-value">{{ formatBitrate(result.bitrate_bps) }}</span>
+            <span class="summary-label">{{ result.direction === 'download' ? '下载' : '上传' }}吞吐量</span>
           </div>
           <div class="summary-item">
-            <span class="summary-value">{{ formatBytes(sender.bytes) }}</span>
+            <span class="summary-value">{{ formatBytes(result.bytes_total) }}</span>
             <span class="summary-label">传输总量</span>
           </div>
           <div class="summary-item">
-            <span class="summary-value">{{ sender.retransmits ?? 0 }}</span>
-            <span class="summary-label">重传次数</span>
-          </div>
-          <div class="summary-item">
-            <span class="summary-value">{{ parsed.end.sum?.jitter_ms?.toFixed(2) ?? '-' }} ms</span>
-            <span class="summary-label">抖动</span>
-          </div>
-          <div class="summary-item">
-            <span class="summary-value">{{ parsed.end.sum?.lost_percent ?? 0 }}%</span>
-            <span class="summary-label">丢包率</span>
-          </div>
-          <div class="summary-item">
-            <span class="summary-value">{{ sender.duration?.toFixed(1) ?? '-' }}s</span>
+            <span class="summary-value">{{ result.duration_sec?.toFixed(1) ?? '-' }}s</span>
             <span class="summary-label">耗时</span>
-          </div>
-          <div class="summary-item" v-if="parsed.end.cpu_utilization_percent">
-            <span class="summary-value">{{ cpuLocal }}% / {{ cpuRemote }}%</span>
-            <span class="summary-label">CPU (本机/远端)</span>
-          </div>
-          <div class="summary-item">
-            <span class="summary-value">{{ mtu }}</span>
-            <span class="summary-label">MTU</span>
           </div>
         </div>
 
-        <div v-if="chartData" class="chart-container">
-          <Line :data="chartData" :options="chartOptions" />
+        <div v-if="result.status === 'error'" class="error-block">
+          <pre>{{ result.error }}</pre>
         </div>
       </template>
 
-      <div v-else-if="result.status === 'error'" class="error-block">
-        <pre>{{ result.output }}</pre>
-      </div>
+      <template v-else>
+        <div class="detail-row" v-if="result.command">
+          <span class="key">指令</span>
+          <code class="command">{{ result.command }}</code>
+        </div>
 
-      <details class="raw-output">
-        <summary>JSON 原始输出</summary>
-        <pre>{{ formattedOutput }}</pre>
-      </details>
+        <template v-if="parsed && parsed.end">
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span class="summary-value">{{ formatBitrate(sender.bitrate) }}</span>
+              <span class="summary-label">{{ sender.label }}吞吐量</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-value">{{ formatBytes(sender.bytes) }}</span>
+              <span class="summary-label">传输总量</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-value">{{ sender.retransmits ?? 0 }}</span>
+              <span class="summary-label">重传次数</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-value">{{ parsed.end.sum?.jitter_ms?.toFixed(2) ?? '-' }} ms</span>
+              <span class="summary-label">抖动</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-value">{{ parsed.end.sum?.lost_percent ?? 0 }}%</span>
+              <span class="summary-label">丢包率</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-value">{{ sender.duration?.toFixed(1) ?? '-' }}s</span>
+              <span class="summary-label">耗时</span>
+            </div>
+            <div class="summary-item" v-if="parsed.end.cpu_utilization_percent">
+              <span class="summary-value">{{ cpuLocal }}% / {{ cpuRemote }}%</span>
+              <span class="summary-label">CPU (本机/远端)</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-value">{{ mtu }}</span>
+              <span class="summary-label">MTU</span>
+            </div>
+          </div>
+
+          <div v-if="chartData" class="chart-container">
+            <Line :data="chartData" :options="chartOptions" />
+          </div>
+        </template>
+
+        <div v-else-if="result.status === 'error'" class="error-block">
+          <pre>{{ result.output }}</pre>
+        </div>
+
+        <details v-if="result.output" class="raw-output">
+          <summary>JSON 原始输出</summary>
+          <pre>{{ formattedOutput }}</pre>
+        </details>
+      </template>
 
       <div class="timestamps">
         <span>开始: {{ formatTime(result.started_at) }}</span>
@@ -96,6 +128,9 @@ export default {
     result: { type: Object, default: null },
   },
   computed: {
+    isHttp() {
+      return this.result && 'direction' in this.result
+    },
     parsed() {
       if (!this.result?.output) return null
       try {

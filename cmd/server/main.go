@@ -19,7 +19,8 @@ func main() {
 	cfg := config.Load()
 
 	executor := iperf.New()
-	handler := api.NewHandler(executor)
+	httpExecutor := iperf.NewHttpExecutor()
+	handler := api.NewHandler(executor, httpExecutor)
 	router := api.SetupRouter(handler)
 
 	log.Printf("iperf-rpc server starting on :%s", cfg.Port)

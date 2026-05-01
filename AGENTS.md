@@ -57,9 +57,13 @@ dev → no-ff merge → master → git tag vX.Y.Z → push tags → CI builds & 
 
 ## K8s
 
-Manifests at `k8s/manifests.yaml`: two Deployments + two NodePort Services:
-- `iperf-rpc-server`: API (8080:30080) + iperf3 (5201:30081)
-- `iperf-rpc-client`: API only (8080:30082)
+Manifests at `k8s/manifests.yaml`: one Deployment + one NodePort Service:
+- `iperf-rpc`: API (8080:30080) + iperf3 (5201:30081)
+
+```bash
+# Deploy (customize NodePort values in env.sh first)
+bash k8s/render.sh | kubectl apply -f -
+```
 
 ## Docker Compose (local dev)
 

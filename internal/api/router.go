@@ -21,6 +21,9 @@ func SetupRouter(handler *Handler) *gin.Engine {
 		api.POST("/iperf/server/start", handler.StartServer)
 		api.POST("/iperf/server/stop", handler.StopServer)
 		api.GET("/iperf/status", handler.ServerStatus)
+		api.POST("/http/run", handler.RunHttpTest)
+		api.GET("/http/data", handler.ServeHttpData)
+		api.POST("/http/upload", handler.ReceiveHttpUpload)
 	}
 
 	// 静态文件服务 (前端 dist)

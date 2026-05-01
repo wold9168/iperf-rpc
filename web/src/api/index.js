@@ -2,7 +2,7 @@ import axios from 'axios'
 
 const api = axios.create({
   baseURL: '/api/v1',
-  timeout: 30000,
+  timeout: 120000,
 })
 
 export function runIperf(data) {
@@ -23,6 +23,10 @@ export function getServerStatus() {
 
 export function healthCheck() {
   return api.get('/health')
+}
+
+export function runHttpTest(data) {
+  return api.post('/http/run', data)
 }
 
 export default api

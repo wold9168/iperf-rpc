@@ -1,21 +1,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: iperf-rpc-server
+  name: iperf-rpc
   labels:
     app: iperf-rpc
-    role: server
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: iperf-rpc
-      role: server
   template:
     metadata:
       labels:
         app: iperf-rpc
-        role: server
     spec:
       containers:
         - name: iperf-rpc
@@ -51,87 +48,19 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: iperf-rpc-server
+  name: iperf-rpc
   labels:
     app: iperf-rpc
-    role: server
 spec:
   type: NodePort
   selector:
     app: iperf-rpc
-    role: server
   ports:
     - name: api
       port: 8080
       targetPort: 8080
-      nodePort: ${IR_NODEPORT_SERVER_API}
+      nodePort: ${IR_NODEPORT_API}
     - name: iperf
       port: 5201
       targetPort: 5201
-      nodePort: ${IR_NODEPORT_SERVER_IPERF}
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: iperf-rpc-client
-  labels:
-    app: iperf-rpc
-    role: client
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: iperf-rpc
-      role: client
-  template:
-    metadata:
-      labels:
-        app: iperf-rpc
-        role: client
-    spec:
-      containers:
-        - name: iperf-rpc
-          image: ${IR_IMAGE}:${IR_IMAGE_TAG}
-          ports:
-            - containerPort: 8080
-              name: api
-          env:
-            - name: PORT
-              value: "8080"
-          readinessProbe:
-            httpGet:
-              path: /api/v1/health
-              port: 8080
-            initialDelaySeconds: 3
-            periodSeconds: 5
-          livenessProbe:
-            httpGet:
-              path: /api/v1/health
-              port: 8080
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          resources:
-            requests:
-              cpu: 100m
-              memory: 64Mi
-            limits:
-              cpu: 500m
-              memory: 256Mi
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: iperf-rpc-client
-  labels:
-    app: iperf-rpc
-    role: client
-spec:
-  type: NodePort
-  selector:
-    app: iperf-rpc
-    role: client
-  ports:
-    - name: api
-      port: 8080
-      targetPort: 8080
-      nodePort: ${IR_NODEPORT_CLIENT_API}
+      nodePort: ${IR_NODEPORT_IPERF}

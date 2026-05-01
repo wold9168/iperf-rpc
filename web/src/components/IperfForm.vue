@@ -88,15 +88,14 @@
           <option value="upload">上传 (upload)</option>
         </select>
       </div>
-      <div class="form-group">
+      <div class="form-group" v-if="http.direction === 'download'">
+        <label>数据量</label>
+        <input v-model="http.dataSize" placeholder="100M" />
+      </div>
+      <div class="form-group" v-else>
         <label>时长 (秒)</label>
         <input v-model.number="http.duration" type="number" placeholder="10" />
       </div>
-    </div>
-
-    <div class="form-group" v-if="http.direction === 'download'">
-      <label>数据量</label>
-      <input v-model="http.dataSize" placeholder="100M" />
     </div>
 
     <button class="btn btn-primary btn-block" @click="submitHttp" :disabled="httpLoading">

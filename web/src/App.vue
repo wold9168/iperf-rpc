@@ -33,7 +33,7 @@ export default {
   },
   methods: {
     handleResult(result) {
-      this.currentResult = result
+      this.currentResult = result.data
     },
   },
 }

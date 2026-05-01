@@ -2,6 +2,7 @@ package iperf
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
@@ -38,7 +39,7 @@ func (e *HttpExecutor) Run(req *model.HttpTestRequest) *model.HttpTestData {
 	}
 	e.results[id] = data
 
-	transport, err := e.buildTransport(req.Proxy)
+	transport, err := e.buildTransport(req.Proxy, req.Insecure)
 	if err != nil {
 		finished := time.Now()
 		data.FinishedAt = &finished
@@ -82,10 +83,16 @@ func (e *HttpExecutor) Run(req *model.HttpTestRequest) *model.HttpTestData {
 	return data
 }
 
-func (e *HttpExecutor) buildTransport(proxyURL string) (*http.Transport, error) {
+func (e *HttpExecutor) buildTransport(proxyURL string, insecure bool) (*http.Transport, error) {
+	tlsConfig := &tls.Config{}
+	if insecure {
+		tlsConfig.InsecureSkipVerify = true
+	}
+
 	if proxyURL == "" {
 		return &http.Transport{
-			DialContext: (&net.Dialer{Timeout: 10 * time.Second}).DialContext,
+			DialContext:    (&net.Dialer{Timeout: 10 * time.Second}).DialContext,
+			TLSClientConfig: tlsConfig,
 		}, nil
 	}
 
@@ -98,6 +105,7 @@ func (e *HttpExecutor) buildTransport(proxyURL string) (*http.Transport, error) 
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				return dialer.Dial(network, addr)
 			},
+			TLSClientConfig: tlsConfig,
 		}, nil
 	}
 

@@ -332,6 +332,11 @@ const docTemplate = `{
                     "default": 10,
                     "example": 10
                 },
+                "insecure": {
+                    "description": "跳过 TLS 证书验证",
+                    "type": "boolean",
+                    "example": false
+                },
                 "proxy": {
                     "description": "SOCKS5 代理地址 (可选)",
                     "type": "string",
@@ -340,7 +345,7 @@ const docTemplate = `{
                 "url": {
                     "description": "目标 URL",
                     "type": "string",
-                    "example": "http://10.0.0.2:8080/api/v1/http/data?size=100M"
+                    "example": "https://10.0.0.2:8443/api/v1/http/data?size=100M"
                 }
             }
         },

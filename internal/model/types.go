@@ -86,10 +86,11 @@ type HealthResponse struct {
 
 // @Description HTTP 测速请求
 type HttpTestRequest struct {
-	URL       string `json:"url" binding:"required" example:"http://10.0.0.2:8080/api/v1/http/data?size=100M"` // 目标 URL
-	Proxy     string `json:"proxy" example:"socks5://proxy:1080"`                                              // SOCKS5 代理地址 (可选)
-	Direction string `json:"direction" binding:"required" example:"download" enums:"download,upload"`          // download 或 upload
-	Duration  int    `json:"duration" example:"10" default:"10"`                                               // 测试时长秒数
+	URL       string `json:"url" binding:"required" example:"https://10.0.0.2:8443/api/v1/http/data?size=100M"` // 目标 URL
+	Proxy     string `json:"proxy" example:"socks5://proxy:1080"`                                               // SOCKS5 代理地址 (可选)
+	Direction string `json:"direction" binding:"required" example:"download" enums:"download,upload"`           // download 或 upload
+	Duration  int    `json:"duration" example:"10" default:"10"`                                                // 测试时长秒数
+	Insecure  bool   `json:"insecure" example:"false"`                                                           // 跳过 TLS 证书验证
 }
 
 // @Description HTTP 测速响应

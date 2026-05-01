@@ -57,13 +57,17 @@ definitions:
         description: 测试时长秒数
         example: 10
         type: integer
+      insecure:
+        description: 跳过 TLS 证书验证
+        example: false
+        type: boolean
       proxy:
         description: SOCKS5 代理地址 (可选)
         example: socks5://proxy:1080
         type: string
       url:
         description: 目标 URL
-        example: http://10.0.0.2:8080/api/v1/http/data?size=100M
+        example: https://10.0.0.2:8443/api/v1/http/data?size=100M
         type: string
     required:
     - direction

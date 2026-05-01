@@ -70,8 +70,9 @@
     <h3>HTTP 测速 (支持 SOCKS5 代理)</h3>
 
     <div class="form-group">
-      <label>目标 URL <span class="required">*</span></label>
-      <input v-model="http.url" placeholder="http://target:8080/api/v1/http/data?size=100M" />
+      <label>目标实例 <span class="required">*</span></label>
+      <input v-model="http.target" placeholder="例如: 10.0.0.2:8080" />
+      <span class="hint">{{ httpUrl }}</span>
     </div>
 
     <div class="form-group">
@@ -91,6 +92,11 @@
         <label>时长 (秒)</label>
         <input v-model.number="http.duration" type="number" placeholder="10" />
       </div>
+    </div>
+
+    <div class="form-group" v-if="http.direction === 'download'">
+      <label>数据量</label>
+      <input v-model="http.dataSize" placeholder="100M" />
     </div>
 
     <button class="btn btn-primary btn-block" @click="submitHttp" :disabled="httpLoading">
@@ -126,14 +132,25 @@ export default {
       error: '',
 
       http: {
-        url: '',
+        target: '',
         proxy: '',
         direction: 'download',
         duration: 10,
+        dataSize: '100M',
       },
       httpLoading: false,
       httpError: '',
     }
+  },
+  computed: {
+    httpUrl() {
+      if (!this.http.target) return ''
+      const base = `http://${this.http.target}/api/v1/http`
+      if (this.http.direction === 'download') {
+        return `${base}/data?size=${this.http.dataSize || '100M'}`
+      }
+      return `${base}/upload`
+    },
   },
   methods: {
     async submit() {
@@ -165,15 +182,15 @@ export default {
     async submitHttp() {
       this.httpError = ''
 
-      if (!this.http.url) {
-        this.httpError = '必须填写目标 URL'
+      if (!this.http.target) {
+        this.httpError = '必须填写目标实例地址'
         return
       }
 
       this.httpLoading = true
       try {
         const { data } = await runHttpTest({
-          url: this.http.url,
+          url: this.httpUrl,
           proxy: this.http.proxy || undefined,
           direction: this.http.direction,
           duration: this.http.duration || 10,
@@ -215,6 +232,14 @@ export default {
 }
 
 .required { color: #e63946; }
+
+.hint {
+  display: block;
+  font-size: 11px;
+  color: #aaa;
+  margin-top: 4px;
+  word-break: break-all;
+}
 
 .form-group input[type="text"],
 .form-group input[type="number"],
